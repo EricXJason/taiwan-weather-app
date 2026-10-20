@@ -1,0 +1,311 @@
+<div class="app">
+  <div class="photo-bg wx-sunny-bg" [class.is-active]="currentWeatherBackground === 'sunny'"></div>
+  <div class="photo-bg wx-cloudy-bg" [class.is-active]="currentWeatherBackground === 'cloudy'"></div>
+  <div class="photo-bg wx-rain-bg" [class.is-active]="currentWeatherBackground === 'rain'"></div>
+  <div class="photo-overlay"></div>
+  <canvas #bgParticles class="bg-particles-canvas"></canvas>
+
+  <div class="page">
+    <header class="header">
+      <h1 class="site-title">台灣天氣預報</h1>
+      <p class="site-sub">TAIWAN WEATHER FORECAST</p>
+    </header>
+
+    <section class="hero-section">
+      <div class="hero-main-container">
+        <div class="hero-map-wrap">
+          <app-taiwan-map [selectedCounty]="selectedCounty" (countySelected)="selectedCounty = $event; onCountyChange()">
+          </app-taiwan-map>
+        </div>
+
+        <div class="hero-info-side">
+          @if (weatherDataService.currentWeather) {
+          <div class="hero-weather">
+            <div class="hero-icon">
+              @if (weatherDataService.currentWeather.weather?.includes("雷")) {
+              <img src="svg/thunderstorm.svg" alt="雷雨" />
+              } @else if (weatherDataService.currentWeather.weather?.includes("雨")) {
+              <img src="svg/rain.svg" alt="降雨" />
+              } @else if (weatherDataService.currentWeather.weather?.includes("雲") || weatherDataService.currentWeather.weather?.includes("陰")) {
+                @if (weatherDataService.currentWeather.weather?.includes("晴")) {
+                <img src="svg/partly-cloudy.svg" alt="多雲時晴" />
+                } @else {
+                <img src="svg/cloudy.svg" alt="陰天多雲" />
+                }
+              } @else if (weatherDataService.currentWeather.weather?.includes("霧")) {
+              <img src="svg/fog.svg" alt="濃霧" />
+              } @else {
+              <img src="svg/clear-day.svg" alt="晴朗" />
+              }
+            </div>
+            <div class="hero-time-row">
+              <div class="hero-time">
+                資料更新時間 {{ weatherDataService.currentTime }}
+              </div>
+              <button class="refresh-btn" (click)="refreshData()" aria-label="刷新天氣資料">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="refresh-icon">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                <span class="refresh-text">刷新</span>
+              </button>
+            </div>
+            <div class="hero-temp-row">
+              <span class="hero-temp">{{ weatherDataService.currentWeather.averageTemperature ?? "—" }}</span>
+              <span class="hero-unit">°C</span>
+            </div>
+            <div class="hero-wx">
+              {{ weatherDataService.currentWeather.weather ?? "—" }}
+            </div>
+          </div>
+          } @else {
+          <div class="hero-placeholder">
+            <img src="svg/clear-day.svg" alt="" class="placeholder-icon" />
+            <p class="placeholder-text">請選擇縣市與區域</p>
+          </div>
+          }
+
+          <div class="location-block">
+            <div class="sel-row">
+              <div class="sel-wrap">
+                <select id="city-select" [(ngModel)]="selectedCounty" (change)="onCountyChange()" aria-label="選擇縣市">
+                  @for (name of counties; track name) {
+                  <option [value]="name">{{ name }}</option>
+                  }
+                </select>
+                <span class="sel-caret">↓</span>
+              </div>
+              <span class="sel-slash">/</span>
+              <div class="sel-wrap">
+                <select id="district-select" [disabled]="!selectedCounty" [(ngModel)]="selectedDistrict"
+                  (change)="onDistrictChange()" aria-label="選擇鄉鎮市區">
+                  @for (district of weatherDataService.districts; track district.LocationName) {
+                  <option [value]="district.LocationName">
+                    {{ district.LocationName }}
+                  </option>
+                  }
+                </select>
+                <span class="sel-caret">↓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    @if (weatherDataService.currentWeather) {
+    <section class="content-section">
+      <div class="quick-row">
+        <div class="quick-item">
+          <img src="svg/metrics/temp-high.svg" alt="" />
+          <span class="qi-label">最高溫度</span>
+          <span class="qi-val">{{ weatherDataService.currentWeather.maxTemperature ?? "—" }}°C</span>
+        </div>
+        <div class="quick-item">
+          <img src="svg/metrics/temp-low.svg" alt="" />
+          <span class="qi-label">最低溫度</span>
+          <span class="qi-val">{{ weatherDataService.currentWeather.minTemperature ?? "—" }}°C</span>
+        </div>
+        <div class="quick-item">
+          <img src="svg/metrics/rain-drop.svg" alt="" />
+          <span class="qi-label">降雨機率</span>
+          <span class="qi-val">{{ weatherDataService.currentWeather.pop12h ?? "—" }}%</span>
+        </div>
+        <div class="quick-item">
+          <img src="svg/metrics/humidity.svg" alt="" />
+          <span class="qi-label">相對濕度</span>
+          <span class="qi-val">{{ weatherDataService.currentWeather.relativeHumidity ?? "—" }}%</span>
+        </div>
+      </div>
+
+      <div class="desc-bar">
+        <span class="desc-tag">綜合描述</span>
+        <p class="desc-text">
+          {{ weatherDataService.currentWeather.weatherDescription ?? "—" }}
+        </p>
+      </div>
+
+      <div class="data-grid">
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/temp.svg" alt="" />平均溫度</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.averageTemperature ?? "—" }}°C</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/temp-high.svg" alt="" />最高溫度</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.maxTemperature ?? "—" }}°C</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/temp-low.svg" alt="" />最低溫度</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.minTemperature ?? "—" }}°C</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/dew.svg" alt="" />露點溫度</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.dewPoint ?? "—" }}°C</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/humidity.svg" alt="" />相對濕度</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.relativeHumidity ?? "—" }}%</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/temp-high.svg" alt="" />最高體感</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.maxApparentTemperature ?? "—" }}°C</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/temp-low.svg" alt="" />最低體感</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.minApparentTemperature ?? "—" }}°C</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/comfort.svg" alt="" />舒適度最大</span>
+          <span class="dc-val">
+            {{ weatherDataService.currentWeather.maxComfortIndex ?? "—" }}
+            @if (weatherDataService.currentWeather.maxComfortIndexDescription) {
+              ・{{ weatherDataService.currentWeather.maxComfortIndexDescription }}
+            }
+          </span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/comfort.svg" alt="" />舒適度最小</span>
+          <span class="dc-val">
+            {{ weatherDataService.currentWeather.minComfortIndex ?? "—" }}
+            @if (weatherDataService.currentWeather.minComfortIndexDescription) {
+              ・{{ weatherDataService.currentWeather.minComfortIndexDescription }}
+            }
+          </span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/wind-speed.svg" alt="" />風速</span>
+          <span class="dc-val">
+            蒲福{{ weatherDataService.currentWeather.beaufortScale ?? "—" }}級・{{ weatherDataService.currentWeather.windSpeed ?? "—" }}m/s
+          </span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/compass.svg" alt="" />風向</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.windDirection ?? "—" }}</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/rain-drop.svg" alt="" />降雨機率</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.pop12h ?? "—" }}%</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/cloudy.svg" alt="" />天氣現象</span>
+          <span class="dc-val">{{ weatherDataService.currentWeather.weather ?? "—" }}</span>
+        </div>
+        <div class="data-cell">
+          <span class="dc-label"><img src="svg/metrics/uv.svg" alt="" />紫外線</span>
+          <span class="dc-val">
+            {{ weatherDataService.currentWeather.uvExposureLevel ?? "夜晚無" }}
+            @if (weatherDataService.currentWeather.uvIndex) {
+              ・指數 {{ weatherDataService.currentWeather.uvIndex }}
+            }
+          </span>
+        </div>
+      </div>
+    </section>
+
+    @if (weatherDataService.futureWeatherList.length > 0) {
+    <section class="future-section">
+      <h3 class="section-label">未來預報</h3>
+      <div class="accordion">
+        @for (slot of weatherDataService.futureWeatherList; track slot.startTime; let i = $index) {
+        <div class="acc-item" [class.is-open]="selectedFutureIndex === i">
+          <button type="button" class="acc-head" (click)="selectFutureTimeSlot(i)">
+            <span class="acc-date">{{ slot.formattedTimeLabel }}</span>
+            <span class="acc-wx-preview">{{ selectedFutureIndex === i ? "" : (slot.weather ?? "") }}</span>
+            <span class="acc-toggle">{{ selectedFutureIndex === i ? "−" : "+" }}</span>
+          </button>
+          @if (selectedFutureIndex === i) {
+          <div class="acc-body">
+            <div class="desc-bar slim">
+              <span class="desc-tag">綜合描述</span>
+              <p class="desc-text">{{ slot.weatherDescription ?? "—" }}</p>
+            </div>
+            <div class="data-grid">
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/temp.svg" alt="" />平均溫度</span>
+                <span class="dc-val">{{ slot.averageTemperature ?? "—" }}°C</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/temp-high.svg" alt="" />最高溫度</span>
+                <span class="dc-val">{{ slot.maxTemperature ?? "—" }}°C</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/temp-low.svg" alt="" />最低溫度</span>
+                <span class="dc-val">{{ slot.minTemperature ?? "—" }}°C</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/dew.svg" alt="" />露點溫度</span>
+                <span class="dc-val">{{ slot.dewPoint ?? "—" }}°C</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/humidity.svg" alt="" />相對濕度</span>
+                <span class="dc-val">{{ slot.relativeHumidity ?? "—" }}%</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/temp-high.svg" alt="" />最高體感</span>
+                <span class="dc-val">{{ slot.maxApparentTemperature ?? "—" }}°C</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/temp-low.svg" alt="" />最低體感</span>
+                <span class="dc-val">{{ slot.minApparentTemperature ?? "—" }}°C</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/comfort.svg" alt="" />舒適度最大</span>
+                <span class="dc-val">
+                  {{ slot.maxComfortIndex ?? "—" }}
+                  @if (slot.maxComfortIndexDescription) {
+                    ・{{ slot.maxComfortIndexDescription }}
+                  }
+                </span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/comfort.svg" alt="" />舒適度最小</span>
+                <span class="dc-val">
+                  {{ slot.minComfortIndex ?? "—" }}
+                  @if (slot.minComfortIndexDescription) {
+                    ・{{ slot.minComfortIndexDescription }}
+                  }
+                </span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/wind-speed.svg" alt="" />風速</span>
+                <span class="dc-val">
+                  蒲福{{ slot.beaufortScale ?? "—" }}級・{{ slot.windSpeed ?? "—" }}m/s
+                </span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/compass.svg" alt="" />風向</span>
+                <span class="dc-val">{{ slot.windDirection ?? "—" }}</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/rain-drop.svg" alt="" />降雨機率</span>
+                <span class="dc-val">{{ slot.pop12h ?? "—" }}%</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/cloudy.svg" alt="" />天氣現象</span>
+                <span class="dc-val">{{ slot.weather ?? "—" }}</span>
+              </div>
+              <div class="data-cell">
+                <span class="dc-label"><img src="svg/metrics/uv.svg" alt="" />紫外線</span>
+                <span class="dc-val">
+                  {{ slot.uvExposureLevel ?? "夜晚無" }}
+                  @if (slot.uvIndex) {
+                    ・指數 {{ slot.uvIndex }}
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+        }
+      </div>
+    </section>
+    }
+    }
+
+    <footer class="footer">
+      <span>資料來源：中央氣象署 Open Data</span>
+    </footer>
+  </div>
+</div>
